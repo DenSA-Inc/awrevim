@@ -47,6 +47,7 @@ impl RVim {
             return Ok(());
         }
 
+        self.terminal.queue(cursor::Hide)?;
         let mut lines = self.window.visible_lines();
         for y in 0..self.size.1 - 1 {
             let line = lines.next();
@@ -58,7 +59,7 @@ impl RVim {
             };
         }
         let (x, y) = self.window.rel_cursor_pos();
-        self.terminal.execute(cursor::MoveTo(x, y))?;
+        self.terminal.queue(cursor::Show)?.execute(cursor::MoveTo(x, y))?;
 
         Ok(())
     }
