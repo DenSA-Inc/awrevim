@@ -20,6 +20,10 @@ impl Window {
         }
     }
 
+    pub fn buffer(&self) -> &Rope {
+        &self.buffer
+    }
+
     pub fn size(&self) -> (u16, u16) {
         self.size
     }

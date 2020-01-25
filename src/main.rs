@@ -53,6 +53,23 @@ impl RVim {
         Ok(())
     }
 
+    fn write_file<P: AsRef<std::path::Path>>(&mut self, path: P) {
+        let file = match std::fs::File::create(path) {
+            Ok(file) => file,
+            Err(err) => {
+                self.error_message = Some(format!("Couldn't open file: {}", err));
+                return;
+            }
+        };
+
+        match self.window.buffer().write_to(file) {
+            Ok(()) => {},
+            Err(err) => {
+                self.error_message = Some(format!("Couldn't write file: {}", err));
+            }
+        };
+    }
+
     fn draw(&mut self) -> Result<()> {
         if self.size.0 < 2 || self.size.1 < 2 {
             return Ok(());
@@ -164,6 +181,17 @@ impl RVim {
 
         match c {
             "q" => self.stop(),
+            "w" => {
+                let filename = match tokens.next() {
+                    Some(name) => name,
+                    None => {
+                        self.error_message = Some(format!("Expected filename"));
+                        return;
+                    },
+                };
+
+                self.write_file(filename);
+            },
             c @ _ => self.error_message = Some(format!("Unknown command: {}", c)),
         }
     }
