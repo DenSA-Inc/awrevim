@@ -6,6 +6,7 @@ pub struct Window {
     size: (u16, u16),
     scroll_offset: (usize, usize),
     cursor: (usize, usize),
+    cursor_x_saved: usize,
 }
 
 impl Window {
@@ -15,6 +16,7 @@ impl Window {
             size: (width, height),
             scroll_offset: (0, 0),
             cursor: (0, 0),
+            cursor_x_saved: 0,
         }
     }
 
@@ -34,6 +36,7 @@ impl Window {
         self.buffer = buffer;
         self.scroll_offset = (0, 0);
         self.cursor = (0, 0);
+        self.cursor_x_saved = 0;
     }
 
     pub fn move_cursor_down(&mut self, lines: usize) {
@@ -46,6 +49,7 @@ impl Window {
             self.scroll_offset.1 += target - max + 1;
         }
 
+        self.cursor.0 = self.cursor_x_saved;
         self.cursor.1 += diff;
         self.adjust_cursor_x();
     }
@@ -59,7 +63,7 @@ impl Window {
             self.scroll_offset.1 = target;
         }
 
-        self.cursor.1 = target;
+        self.cursor = (self.cursor_x_saved, target);
         self.adjust_cursor_x();
     }
 
@@ -84,11 +88,13 @@ impl Window {
 
     pub fn move_cursor_left(&mut self, cols: usize) {
         self.cursor.0 = if cols > self.cursor.0 { 0 } else { self.cursor.0 - cols };
+        self.cursor_x_saved = self.cursor.0;
     }
 
     pub fn move_cursor_right(&mut self, cols: usize) {
         self.cursor.0 += cols;
         self.adjust_cursor_x();
+        self.cursor_x_saved = self.cursor.0;
     }
 }
 
