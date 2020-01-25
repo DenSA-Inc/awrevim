@@ -58,6 +58,7 @@ impl RVim {
                 None => self.terminal.queue(style::Print("~"))?,
             };
         }
+        self.terminal.queue(cursor::MoveTo(0, self.size.1 - 1))?.queue(Clear(ClearType::CurrentLine))?;
         let (x, y) = self.window.rel_cursor_pos();
         self.terminal.queue(cursor::Show)?.execute(cursor::MoveTo(x, y))?;
 
@@ -83,6 +84,7 @@ impl RVim {
             }
             if let event::Event::Resize(width, height) = ev {
                 self.size = (width, height);
+                self.window.resize(width, height - 1);
                 self.draw()?;
             }
         }
@@ -103,7 +105,9 @@ fn main() -> Result<()> {
     }
     vim.mainloop()?;
 
+    queue!(terminal, Clear(ClearType::All), cursor::MoveTo(0, 0))?;
     disable_raw_mode()?;
+    terminal.flush()?;
 
     Ok(())
 }

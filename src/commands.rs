@@ -2,6 +2,11 @@ use std::collections::HashMap;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use crate::RVim;
 
+pub enum Mode {
+    Normal,
+    Insert,
+}
+
 pub struct Mapping {
     maps: HashMap<KeyEvent, fn(&mut RVim)>,
 }

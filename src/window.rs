@@ -96,5 +96,16 @@ impl Window {
         self.adjust_cursor_x();
         self.cursor_x_saved = self.cursor.0;
     }
+
+    pub fn resize(&mut self, width: u16, height: u16) {
+        let (relx, rely) = self.rel_cursor_pos();
+        if rely >= height {
+            self.scroll_offset.1 += (rely - height + 1) as usize;
+        }
+        if relx >= width {
+            self.scroll_offset.0 += (relx - width + 1) as usize;
+        }
+        self.size = (width, height);
+    }
 }
 
