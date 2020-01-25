@@ -82,6 +82,7 @@ pub fn default_mappings() -> Mapping {
     map.insert_mapping(&Normal, KeyEvent { code: KeyCode::Char('u'), modifiers: KeyModifiers::CONTROL }, move_half_up);
 
     map.insert_nomod_mapping(&Normal, KeyCode::Char('i'), start_insert);
+    map.insert_nomod_mapping(&Normal, KeyCode::Char(':'), start_ex);
     map.insert_nomod_mapping(&Insert, KeyCode::Esc, back_normal);
 
     map
@@ -123,3 +124,6 @@ fn back_normal(editor: &mut RVim) {
     editor.set_mode(Mode::Normal);
 }
 
+fn start_ex(editor: &mut RVim) {
+    editor.set_mode(Mode::Ex);
+}

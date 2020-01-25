@@ -13,14 +13,17 @@ use std::io::Result as IOResult;
 
 mod commands;
 mod window;
+mod ex;
 
 use commands::{Mapping, Mode, default_mappings};
 use window::Window;
+use ex::{ExBar, ExResult};
 
 struct RVim {
     terminal: Stdout,
     size: (u16, u16),
     window: Window,
+    bar: ExBar,
 
     mode: Mode,
     keymaps: Mapping,
@@ -34,6 +37,7 @@ impl RVim {
             terminal: stdout(),
             size: (width, height),
             window: Window::new(width, height - 1),
+            bar: ExBar::new(),
             mode: Mode::Normal,
             keymaps: default_mappings(),
         })
@@ -61,8 +65,15 @@ impl RVim {
             };
         }
         self.terminal.queue(cursor::MoveTo(0, self.size.1 - 1))?.queue(Clear(ClearType::CurrentLine))?;
-        let (x, y) = self.window.rel_cursor_pos();
-        self.terminal.queue(cursor::Show)?.execute(cursor::MoveTo(x, y))?;
+        if let Mode::Ex = self.mode {
+            self.terminal.queue(style::Print(":"))?
+                         .queue(style::Print(self.bar.buffer()))?
+                         .queue(cursor::Show)?
+                         .execute(cursor::MoveTo(1 + self.bar.cursor_index() as u16, self.size.1 - 1))?;
+        } else {
+            let (x, y) = self.window.rel_cursor_pos();
+            self.terminal.queue(cursor::Show)?.execute(cursor::MoveTo(x, y))?;
+        }
 
         Ok(())
     }
@@ -115,8 +126,21 @@ impl RVim {
                     }
                 }
             },
+            Mode::Ex => {
+                match self.bar.handle_key(key) {
+                    ExResult::Aborted => self.set_mode(Mode::Normal),
+                    ExResult::StillEditing => {},
+                    ExResult::Finished(cmd) => {
+                        self.perform_ex_cmd(cmd);
+                        self.set_mode(Mode::Normal);
+                    },
+                }
+            },
             _ => {}
         }
+    }
+
+    fn perform_ex_cmd(&mut self, cmd: String) {
     }
 }
 
