@@ -20,6 +20,10 @@ impl Window {
         }
     }
 
+    pub fn size(&self) -> (u16, u16) {
+        self.size
+    }
+
     pub fn visible_lines(&self) -> impl Iterator<Item = RopeSlice> {
         self.buffer.lines_at(self.scroll_offset.1).take(self.size.1 as usize)
     }
