@@ -27,6 +27,9 @@ struct RVim {
 
     mode: Mode,
     keymaps: Mapping,
+
+    error_message: Option<String>,
+    running: bool,
 }
 
 impl RVim {
@@ -40,6 +43,8 @@ impl RVim {
             bar: ExBar::new(),
             mode: Mode::Normal,
             keymaps: default_mappings(),
+            error_message: None,
+            running: true,
         })
     }
 
@@ -71,6 +76,11 @@ impl RVim {
                          .queue(cursor::Show)?
                          .execute(cursor::MoveTo(1 + self.bar.cursor_index() as u16, self.size.1 - 1))?;
         } else {
+            self.terminal.queue(style::Print(&self.mode))?.queue(style::Print(" "))?;
+            if let Some(msg) = self.error_message.as_ref() {
+                self.terminal.queue(style::Print(msg))?;
+            }
+
             let (x, y) = self.window.rel_cursor_pos();
             self.terminal.queue(cursor::Show)?.execute(cursor::MoveTo(x, y))?;
         }
@@ -83,17 +93,22 @@ impl RVim {
     }
 
     pub fn set_mode(&mut self, mode: Mode) {
+        if let Mode::Ex = mode {
+            self.error_message = None;
+        }
+
         self.mode = mode;
     }
 
+    pub fn stop(&mut self) {
+        self.running = false;
+    }
+
     fn mainloop(&mut self) -> Result<()> {
-        loop {
+        while self.running {
             self.draw()?;
 
             let ev = event::read()?;
-            if let event::Event::Key(event::KeyEvent { code: event::KeyCode::Char('q'), modifiers: _ }) = ev {
-                break;
-            }
             if let event::Event::Key(key_event) = ev {
                 if let Some(func) = self.keymaps.get_mapping(&self.mode, &key_event) {
                     func(self);
@@ -141,6 +156,16 @@ impl RVim {
     }
 
     fn perform_ex_cmd(&mut self, cmd: String) {
+        let mut tokens = cmd.split_whitespace();
+        let c = match tokens.next() {
+            Some(c) => c,
+            None => return,
+        };
+
+        match c {
+            "q" => self.stop(),
+            c @ _ => self.error_message = Some(format!("Unknown command: {}", c)),
+        }
     }
 }
 

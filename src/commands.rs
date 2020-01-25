@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use crate::RVim;
 
@@ -10,6 +11,19 @@ pub enum Mode {
     Insert,
     Operator,
     Ex,
+}
+
+impl Display for Mode {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        use Mode::*;
+
+        write!(fmt, "--- {} ---", match self {
+            Normal => "NORMAL",
+            Insert => "INSERT",
+            Operator => "OPERATOR",
+            Ex => "EX",
+        })
+    }
 }
 
 pub struct Mapping {
