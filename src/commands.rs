@@ -45,35 +45,18 @@ pub fn default_mappings() -> Mapping {
 }
 
 fn move_down(editor: &mut RVim) {
-    if editor.cursor.1 < editor.buffer.len_lines() - 1 {
-        editor.cursor.1 += 1;
-    }
-    let line_len = editor.buffer.line(editor.cursor.1).len_chars();
-    if editor.cursor.0 >= line_len {
-        editor.cursor.0 = line_len - 1;
-    }
+    editor.current_window_mut().move_cursor_down(1);
 }
 
 fn move_up(editor: &mut RVim) {
-    if editor.cursor.1 > 0 {
-        editor.cursor.1 -= 1;
-    }
-    let line_len = editor.buffer.line(editor.cursor.1).len_chars();
-    if editor.cursor.0 >= line_len {
-        editor.cursor.0 = line_len - 1;
-    }
+    editor.current_window_mut().move_cursor_up(1);
 }
 
 fn move_right(editor: &mut RVim) {
-    let line_len = editor.buffer.line(editor.cursor.1).len_chars();
-    if editor.cursor.0 < line_len - 1 {
-        editor.cursor.0 += 1;
-    }
+    editor.current_window_mut().move_cursor_right(1);
 }
 
 fn move_left(editor:  &mut RVim) {
-    if editor.cursor.0 > 0 {
-        editor.cursor.0 -= 1;
-    }
+    editor.current_window_mut().move_cursor_left(1);
 }
 

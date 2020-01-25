@@ -12,31 +12,33 @@ use ropey::Rope;
 use std::io::Result as IOResult;
 
 mod commands;
+mod window;
 
 use commands::{Mapping, default_mappings};
+use window::Window;
 
 struct RVim {
     terminal: Stdout,
-    pub buffer: Rope,
-    pub size: (u16, u16),
-    pub cursor: (usize, usize),
+    size: (u16, u16),
+    window: Window,
 
     keymaps: Mapping,
 }
 
 impl RVim {
     fn new() -> Result<Self> {
+        let (width, height) = size()?;
+
         Ok(Self { 
             terminal: stdout(),
-            buffer: Rope::new(),
-            size: size()?,
-            cursor: (0, 0),
+            size: (width, height),
+            window: Window::new(width, height - 1),
             keymaps: default_mappings(),
         })
     }
 
     fn read_file<P: AsRef<std::path::Path>>(&mut self, path: P) -> IOResult<()> {
-        self.buffer = Rope::from_reader(std::fs::File::open(path)?)?;
+        self.window.set_buffer(Rope::from_reader(std::fs::File::open(path)?)?);
         Ok(())
     }
 
@@ -45,19 +47,24 @@ impl RVim {
             return Ok(());
         }
 
-        let mut lines = self.buffer.lines();
+        let mut lines = self.window.visible_lines();
         for y in 0..self.size.1 - 1 {
             let line = lines.next();
 
-            self.terminal.queue(cursor::MoveTo(0, y))?;
+            self.terminal.queue(cursor::MoveTo(0, y))?.queue(Clear(ClearType::CurrentLine))?;
             match line {
                 Some(slice) => self.terminal.queue(style::Print(slice))?,
                 None => self.terminal.queue(style::Print("~"))?,
             };
         }
-        self.terminal.execute(cursor::MoveTo(self.cursor.0 as u16, self.cursor.1 as u16))?;
+        let (x, y) = self.window.rel_cursor_pos();
+        self.terminal.execute(cursor::MoveTo(x, y))?;
 
         Ok(())
+    }
+
+    pub fn current_window_mut(&mut self) -> &mut Window {
+        &mut self.window
     }
 
     fn mainloop(&mut self) -> Result<()> {
