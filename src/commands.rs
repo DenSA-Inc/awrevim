@@ -2,32 +2,63 @@ use std::collections::HashMap;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use crate::RVim;
 
+type RVimFunction = fn(&mut RVim);
+type KeyMap = HashMap<KeyEvent, RVimFunction>;
+
 pub enum Mode {
     Normal,
     Insert,
+    Operator,
+    Ex,
 }
 
 pub struct Mapping {
-    maps: HashMap<KeyEvent, fn(&mut RVim)>,
+    nmaps: KeyMap,
+    imaps: KeyMap,
+    omaps: KeyMap,
+    xmaps: KeyMap,
 }
 
 impl Mapping {
     pub fn new() -> Self {
         Self {
-            maps: HashMap::new(),
+            nmaps: HashMap::new(),
+            imaps: HashMap::new(),
+            omaps: HashMap::new(),
+            xmaps: HashMap::new(),
         }
     }
 
-    pub fn get_mapping(&self, event: &KeyEvent) -> Option<&fn(&mut RVim)> {
-        self.maps.get(event)
+    fn get_map(&self, mode: &Mode) -> &KeyMap {
+        use Mode::*;
+        match mode {
+            Normal => &self.nmaps,
+            Insert => &self.imaps,
+            Operator => &self.omaps,
+            Ex => &self.xmaps,
+        }
     }
 
-    pub fn insert_mapping(&mut self, event: KeyEvent, func: fn(&mut RVim)) {
-        self.maps.insert(event, func);
+    fn get_map_mut(&mut self, mode: &Mode) -> &mut KeyMap {
+        use Mode::*;
+        match mode {
+            Normal => &mut self.nmaps,
+            Insert => &mut self.imaps,
+            Operator => &mut self.omaps,
+            Ex => &mut self.xmaps,
+        }
     }
 
-    pub fn insert_nomod_mapping(&mut self, code: KeyCode, func: fn(&mut RVim)) {
-        self.maps.insert(KeyEvent {
+    pub fn get_mapping(&self, mode: &Mode, event: &KeyEvent) -> Option<&fn(&mut RVim)> {
+        self.get_map(mode).get(event)
+    }
+
+    pub fn insert_mapping(&mut self, mode: &Mode, event: KeyEvent, func: fn(&mut RVim)) {
+        self.get_map_mut(mode).insert(event, func);
+    }
+
+    pub fn insert_nomod_mapping(&mut self, mode: &Mode, code: KeyCode, func: fn(&mut RVim)) {
+        self.get_map_mut(mode).insert(KeyEvent {
             code,
             modifiers: KeyModifiers::empty(),
         }, func);
@@ -35,21 +66,25 @@ impl Mapping {
 }
 
 pub fn default_mappings() -> Mapping {
-    let mut mode = Mapping::new();
+    use Mode::*;
+    let mut map = Mapping::new();
 
-    mode.insert_nomod_mapping(KeyCode::Char('h'), move_left);
-    mode.insert_nomod_mapping(KeyCode::Char('j'), move_down);
-    mode.insert_nomod_mapping(KeyCode::Char('k'), move_up);
-    mode.insert_nomod_mapping(KeyCode::Char('l'), move_right);
-    mode.insert_nomod_mapping(KeyCode::Left, move_left);
-    mode.insert_nomod_mapping(KeyCode::Down, move_down);
-    mode.insert_nomod_mapping(KeyCode::Up, move_up);
-    mode.insert_nomod_mapping(KeyCode::Right, move_right);
+    map.insert_nomod_mapping(&Normal, KeyCode::Char('h'), move_left);
+    map.insert_nomod_mapping(&Normal, KeyCode::Char('j'), move_down);
+    map.insert_nomod_mapping(&Normal, KeyCode::Char('k'), move_up);
+    map.insert_nomod_mapping(&Normal, KeyCode::Char('l'), move_right);
+    map.insert_nomod_mapping(&Normal, KeyCode::Left, move_left);
+    map.insert_nomod_mapping(&Normal, KeyCode::Down, move_down);
+    map.insert_nomod_mapping(&Normal, KeyCode::Up, move_up);
+    map.insert_nomod_mapping(&Normal, KeyCode::Right, move_right);
 
-    mode.insert_mapping(KeyEvent { code: KeyCode::Char('d'), modifiers: KeyModifiers::CONTROL }, move_half_down);
-    mode.insert_mapping(KeyEvent { code: KeyCode::Char('u'), modifiers: KeyModifiers::CONTROL }, move_half_up);
+    map.insert_mapping(&Normal, KeyEvent { code: KeyCode::Char('d'), modifiers: KeyModifiers::CONTROL }, move_half_down);
+    map.insert_mapping(&Normal, KeyEvent { code: KeyCode::Char('u'), modifiers: KeyModifiers::CONTROL }, move_half_up);
 
-    mode
+    map.insert_nomod_mapping(&Normal, KeyCode::Char('i'), start_insert);
+    map.insert_nomod_mapping(&Insert, KeyCode::Esc, back_normal);
+
+    map
 }
 
 fn move_down(editor: &mut RVim) {
@@ -78,5 +113,13 @@ fn move_half_up(editor: &mut RVim) {
     let window = editor.current_window_mut();
     let half = (window.size().1 + 1) / 2;
     window.move_cursor_up(half as usize);
+}
+
+fn start_insert(editor: &mut RVim) {
+    editor.set_mode(Mode::Insert);
+}
+
+fn back_normal(editor: &mut RVim) {
+    editor.set_mode(Mode::Normal);
 }
 

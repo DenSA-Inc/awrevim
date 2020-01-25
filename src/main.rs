@@ -14,7 +14,7 @@ use std::io::Result as IOResult;
 mod commands;
 mod window;
 
-use commands::{Mapping, default_mappings};
+use commands::{Mapping, Mode, default_mappings};
 use window::Window;
 
 struct RVim {
@@ -22,6 +22,7 @@ struct RVim {
     size: (u16, u16),
     window: Window,
 
+    mode: Mode,
     keymaps: Mapping,
 }
 
@@ -33,6 +34,7 @@ impl RVim {
             terminal: stdout(),
             size: (width, height),
             window: Window::new(width, height - 1),
+            mode: Mode::Normal,
             keymaps: default_mappings(),
         })
     }
@@ -69,6 +71,10 @@ impl RVim {
         &mut self.window
     }
 
+    pub fn set_mode(&mut self, mode: Mode) {
+        self.mode = mode;
+    }
+
     fn mainloop(&mut self) -> Result<()> {
         loop {
             self.draw()?;
@@ -78,8 +84,10 @@ impl RVim {
                 break;
             }
             if let event::Event::Key(key_event) = ev {
-                if let Some(func) = self.keymaps.get_mapping(&key_event) {
+                if let Some(func) = self.keymaps.get_mapping(&self.mode, &key_event) {
                     func(self);
+                } else {
+                    self.default_action(key_event);
                 }
             }
             if let event::Event::Resize(width, height) = ev {
@@ -90,6 +98,25 @@ impl RVim {
         }
 
         Ok(())
+    }
+
+    fn default_action(&mut self, key: event::KeyEvent) {
+        match self.mode {
+            Mode::Insert => {
+                if key.modifiers.is_empty() {
+                    use event::KeyCode::*;
+
+                    match key.code {
+                        Char(chr) => self.window.insert_char(chr),
+                        Enter => self.window.insert_enter(),
+                        Backspace => self.window.backspace(),
+                        Delete => self.window.delete(),
+                        _ => {},
+                    }
+                }
+            },
+            _ => {}
+        }
     }
 }
 

@@ -81,9 +81,6 @@ impl Window {
 
         let line = self.buffer.line(self.cursor.1);
         let mut line_len = line.len_chars();
-        if line_len > 0 && is_newline(line.char(line_len - 1)) {
-            line_len -= 1;
-        }
         if line_len > 0 {
             line_len -= 1;
         }
@@ -110,6 +107,42 @@ impl Window {
             self.scroll_offset.0 += (relx - width + 1) as usize;
         }
         self.size = (width, height);
+    }
+
+    pub fn insert_char(&mut self, chr: char) {
+        let line_index = self.buffer.line_to_char(self.cursor.1);
+        self.buffer.insert_char(line_index + self.cursor.0, chr);
+        self.cursor.0 += 1;
+    }
+
+    pub fn insert_enter(&mut self) {
+        self.insert_char('\n');
+        self.move_cursor_down(1);
+        self.cursor.0 = 0;
+    }
+
+    pub fn backspace(&mut self) {
+        if self.cursor == (0, 0) {
+            return;
+        }
+
+        let line_index = self.buffer.line_to_char(self.cursor.1);
+        let index = line_index + self.cursor.0 - 1;
+        self.buffer.remove(index..index + 1);
+        
+        let new_line = self.buffer.char_to_line(index);
+        if new_line != self.cursor.1 {
+            self.move_cursor_up(1);
+        }
+        self.cursor.0 = index - self.buffer.line_to_char(new_line);
+    }
+
+    pub fn delete(&mut self) {
+        let index = self.buffer.line_to_char(self.cursor.1) + self.cursor.0;
+        if index < self.buffer.len_chars() {
+            self.buffer.remove(index..index + 1);
+        }
+        self.adjust_cursor_x();
     }
 }
 
